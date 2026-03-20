@@ -199,13 +199,24 @@ def fetch_and_filter_stocks(tickers, min_price, min_market_cap, min_volume, min_
             if not avg_volume or avg_volume < min_volume * 1000:
                 continue
             
-            # Проверка ADR
-            if hist.empty or len(hist) < 2:
+            # Проверка ADR (Average Daily Range) - средний дневной ход за месяц
+            if hist.empty or len(hist) < 5:
                 continue
             
-            high = hist['High']
-            low = hist['Low']
-            adr = ((high.max() - low.min()) / low.min()) * 100 if low.min() > 0 else 0
+            # ADR = среднее от (High - Low) / Open * 100 за каждый день
+            daily_ranges = []
+            for i in range(len(hist)):
+                day_high = hist['High'].iloc[i]
+                day_low = hist['Low'].iloc[i]
+                day_open = hist['Open'].iloc[i]
+                if day_open > 0:
+                    daily_range = ((day_high - day_low) / day_open) * 100
+                    daily_ranges.append(daily_range)
+            
+            if not daily_ranges:
+                continue
+            
+            adr = sum(daily_ranges) / len(daily_ranges)
             
             if adr < min_adr:
                 continue
@@ -216,7 +227,7 @@ def fetch_and_filter_stocks(tickers, min_price, min_market_cap, min_volume, min_
                 'price': price,
                 'market_cap': market_cap,
                 'volume': avg_volume,
-                'adr': adr
+                'adr': round(adr, 2)
             })
             
         except Exception:
